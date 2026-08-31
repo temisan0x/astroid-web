@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
   useReactTable,
   getCoreRowModel,
@@ -25,7 +25,7 @@ interface TransactionHistoryTableProps {
 type StatusFilter = 'all' | 'completed' | 'pending' | 'failed';
 
 export function TransactionHistoryTable({ transactions, className }: TransactionHistoryTableProps) {
-  const [sorting, setSorting] = useState<any>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [agentFilter, setAgentFilter] = useState<string>('all');
@@ -124,7 +124,12 @@ export function TransactionHistoryTable({ transactions, className }: Transaction
 
   function exportCSV() {
     const headers = columns.map((c) => (typeof c.header === 'string' ? c.header : ''));
-    const rows = filteredRows.map((r) => columns.map((c) => String(r.getValue((c as any).accessorKey ?? ''))));
+    const rows = filteredRows.map((r) =>
+      columns.map((c) => {
+        const key = (c as unknown as { accessorKey?: string }).accessorKey;
+        return String(key ? r.getValue(key) : '');
+      }),
+    );
     const csv = [headers.join(','), ...rows.map((r) => r.map((cell) => JSON.stringify(cell)).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -256,7 +261,7 @@ export function TransactionHistoryTable({ transactions, className }: Transaction
                   className="transition-colors duration-fast hover:bg-surface-secondary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className={cn('px-4 py-3 align-middle text-foreground', (cell.column.columnDef.meta as any)?.className)}>
+                    <td key={cell.id} className={cn('px-4 py-3 align-middle text-foreground', (cell.column.columnDef.meta as { className?: string } | undefined)?.className)}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
